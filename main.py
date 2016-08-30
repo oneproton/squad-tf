@@ -20,15 +20,15 @@ tf.app.flags.DEFINE_float("learning_rate_decay_factor", 0.99,
                           "Learning rate decays by this much.")
 tf.app.flags.DEFINE_float("max_gradient_norm", 5.0,
                           "Clip gradients to this norm.")
-tf.app.flags.DEFINE_integer("batch_size", 20,
+tf.app.flags.DEFINE_integer("batch_size", 32,
                             "Batch size to use during training.")
-tf.app.flags.DEFINE_integer("size", 128, "Size of each model layer.")
-tf.app.flags.DEFINE_integer("num_layers", 1, "Number of layers in the model.")
+tf.app.flags.DEFINE_integer("size", 1024, "Size of each model layer.")
+tf.app.flags.DEFINE_integer("num_layers", 2, "Number of layers in the model.")
 tf.app.flags.DEFINE_integer("en_vocab_size", 50000, "English vocabulary size.")
 tf.app.flags.DEFINE_integer("fr_vocab_size", 3, "French vocabulary size.")
 tf.app.flags.DEFINE_string("data_dir", "./data", "Data directory")
 tf.app.flags.DEFINE_string("train_dir", "./ckpt", "Training directory.")
-tf.app.flags.DEFINE_integer("max_train_data_size", 60,
+tf.app.flags.DEFINE_integer("max_train_data_size", 0,
                             "Limit on the siz   e of training data (0: no limit).")
 tf.app.flags.DEFINE_integer("steps_per_checkpoint", 200,
                             "How many training steps to do per checkpoint.")
@@ -97,6 +97,67 @@ def create_model(session, forward_only):
     return model
 
 
+def get_batch(data, bucket_id):
+    """Get a random batch of data from the specified bucket, prepare for step.
+
+    To feed data in step(..) it must be a list of batch-major vectors, while
+    data here contains single length-major cases. So the main logic of this
+    function is to re-index data cases to be in the proper format for feeding.
+
+    Args:
+      data: a tuple of size len(self.buckets) in which each element contains
+        lists of pairs of input and output data that we use to create a batch.
+      bucket_id: integer, which bucket to get the batch for.
+
+    Returns:
+      The triple (encoder_inputs, decoder_inputs, target_weights) for
+      the constructed batch that has the proper format to call step(...) later.
+    """
+    encoder_size, decoder_size = _buckets[bucket_id]
+    encoder_inputs, decoder_inputs = [], []
+
+    # Get a random batch of encoder and decoder inputs from data,
+    # pad them if needed, reverse encoder inputs and add GO to decoder.
+    for _ in xrange(FLAGS.batch_size):
+        encoder_input, decoder_input = random.choice(data[bucket_id])
+
+        # Encoder inputs are padded and then reversed.
+        encoder_pad = [data_utils.PAD_ID] * (encoder_size - len(encoder_input))
+        encoder_inputs.append(list(encoder_input + encoder_pad))
+
+        # Decoder inputs get an extra "GO" symbol, and are padded then.
+        decoder_pad_size = decoder_size - len(decoder_input) - 1
+        decoder_inputs.append([data_utils.GO_ID] + decoder_input +
+                              [data_utils.PAD_ID] * decoder_pad_size)
+
+    # Now we create batch-major vectors from the data selected above.
+    batch_encoder_inputs, batch_decoder_inputs, batch_weights = [], [], []
+
+    # Batch encoder inputs are just re-indexed encoder_inputs.
+    for length_idx in xrange(encoder_size):
+        batch_encoder_inputs.append(
+            np.array([encoder_inputs[batch_idx][length_idx]
+                      for batch_idx in xrange(FLAGS.batch_size)], dtype=np.int32))
+
+    # Batch decoder inputs are re-indexed decoder_inputs, we create weights.
+    for length_idx in xrange(decoder_size):
+        batch_decoder_inputs.append(
+            np.array([decoder_inputs[batch_idx][length_idx]
+                      for batch_idx in xrange(FLAGS.batch_size)], dtype=np.int32))
+
+        # Create target_weights to be 0 for targets that are padding.
+        batch_weight = np.ones(FLAGS.batch_size, dtype=np.float32)
+        for batch_idx in xrange(FLAGS.batch_size):
+            # We set weight to 0 if the corresponding target is a PAD symbol.
+            # The corresponding target is decoder_input shifted by 1 forward.
+            if length_idx < decoder_size - 1:
+                target = decoder_inputs[batch_idx][length_idx + 1]
+            if length_idx == decoder_size - 1 or target == data_utils.PAD_ID:
+                batch_weight[batch_idx] = 0.0
+        batch_weights.append(batch_weight)
+    return batch_encoder_inputs, batch_decoder_inputs, batch_weights
+
+
 def train():
     with tf.Session() as sess:
         # Create Model
@@ -129,9 +190,42 @@ def train():
         bucket_id = min([i for i in xrange(len(train_buckets_scale)) if train_buckets_scale[i] > random_number_01])
 
         start_time = time.time()
-        encoder_inputs, decoder_inputs, target_weights = model.get_batch(train_set, bucket_id)
-        print(bucket_id,encoder_inputs,decoder_inputs,target_weights)
+        encoder_inputs, decoder_inputs, target_weights = get_batch(train_set, bucket_id)
+        # print(bucket_id,encoder_inputs,decoder_inputs,target_weights)
 
+        _, step_loss, _ = model.step(sess, encoder_inputs, decoder_inputs,
+                                     target_weights, bucket_id, False)
+        step_time += (time.time() - start_time) / FLAGS.steps_per_checkpoint
+        loss += step_loss / FLAGS.steps_per_checkpoint
+        current_step += 1
+
+        # Once in a while, we save checkpoint, print statistics, and run evals.
+        if current_step % FLAGS.steps_per_checkpoint == 0:
+            # Print statistics for the previous epoch.
+            perplexity = math.exp(loss) if loss < 300 else float('inf')
+            print ("global step %d learning rate %.4f step-time %.2f perplexity "
+                   "%.2f" % (model.global_step.eval(), model.learning_rate.eval(),
+                             step_time, perplexity))
+            # Decrease learning rate if no improvement was seen over last 3 times.
+            if len(previous_losses) > 2 and loss > max(previous_losses[-3:]):
+                sess.run(model.learning_rate_decay_op)
+            previous_losses.append(loss)
+            # Save checkpoint and zero timer and loss.
+            checkpoint_path = os.path.join(FLAGS.train_dir, "translate.ckpt")
+            model.saver.save(sess, checkpoint_path, global_step=model.global_step)
+            step_time, loss = 0.0, 0.0
+            # Run evals on development set and print their perplexity.
+            for bucket_id in xrange(len(_buckets)):
+                if len(dev_set[bucket_id]) == 0:
+                    print("  eval: empty bucket %d" % (bucket_id))
+                    continue
+                encoder_inputs, decoder_inputs, target_weights = get_batch(
+                    dev_set, bucket_id)
+                _, eval_loss, _ = model.step(sess, encoder_inputs, decoder_inputs,
+                                             target_weights, bucket_id, True)
+                eval_ppx = math.exp(eval_loss) if eval_loss < 300 else float('inf')
+                print("  eval: bucket %d perplexity %.2f" % (bucket_id, eval_ppx))
+            sys.stdout.flush()
 
 
 if __name__ == "__main__":
