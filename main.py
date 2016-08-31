@@ -223,8 +223,8 @@ def train():
                         dev_set, bucket_id)
                     _, eval_loss, _ = model.step(sess, encoder_inputs, decoder_inputs,
                                                  target_weights, bucket_id, True)
-                    eval_ppx = math.exp(eval_loss) if eval_loss < 300 else float('inf')
-                    print("  eval: bucket %d perplexity %.2f" % (bucket_id, eval_ppx))
+                    eval_loss = eval_loss if eval_loss < 300 else float('inf')
+                    print("  eval: bucket %d loss %.2f" % (bucket_id, eval_loss))
                 sys.stdout.flush()
 
 
