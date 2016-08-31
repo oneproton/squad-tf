@@ -31,15 +31,15 @@ DECODER_INPUT_LEN = 413
 
 _PAD = "_PAD"
 _GO = "_GO"
-_EOS = "_EOS"
 _UNK = "_UNK"
+_EOS = "_EOS"
 _SPL = "_SPL"
-_START_VOCAB = [_PAD, _GO, _EOS, _UNK, _SPL]
+_START_VOCAB = [_PAD, _GO, _UNK, _EOS, _SPL]
 
 PAD_ID = 0
 GO_ID = 1
-EOS_ID = 2
-UNK_ID = 3
+UNK_ID = 2
+EOS_ID = 3
 SPL_ID = 4
 
 B_ID = 0
