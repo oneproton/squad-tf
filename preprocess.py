@@ -202,9 +202,10 @@ def main():
     train_set, dev_set, vocab = build_corpus(datasets)
     vocab, reversed_vocab = build_vocab(vocab)
 
-    with io.open("./data/vocab.dict", "w", encoding="utf-8") as f_vocab:
+    with io.open("./data/vocab%d.en" % VOCAB_SIZE, "w", encoding="utf-8") as f_vocab:
+        vocab_list = sorted(vocab, key=vocab.get)
         for word, index in vocab.items():
-            f_vocab.write(word + " " + unicode(index) + "\n")
+            f_vocab.write(word + "\n")
 
     train_enc_inputs, train_dec_inputs = build_qa_pairs(train_set, vocab)
     dev_enc_inputs , dev_dec_inputs = build_qa_pairs(dev_set, vocab)
