@@ -270,6 +270,27 @@ def decode():
             sentence = sys.stdin.readline()
 
 
+def self_test():
+    """Test the translation model."""
+    with tf.Session() as sess:
+        print("Self-test for neural translation model.")
+        # Create model with vocabularies of 10, 2 small buckets, 2 layers of 32.
+        model = seq2seq_model.Seq2SeqModel(10, 10, [(3, 3), (6, 6)], 32, 2,
+                                           5.0, 32, 0.3, 0.99, num_samples=8)
+        sess.run(tf.initialize_all_variables())
+
+        # Fake data set for both the (3, 3) and (6, 6) bucket.
+        data_set = ([([1, 1], [2, 2]), ([3, 3], [4]), ([5], [6])],
+                    [([1, 1, 1, 1, 1], [2, 2, 2, 2, 2]), ([3, 3, 3], [5, 6])])
+        for _ in xrange(5):  # Train the fake model for 5 steps.
+            bucket_id = random.choice([0, 1])
+            encoder_inputs, decoder_inputs, target_weights = get_batch(
+                data_set, bucket_id)
+            model.step(sess, encoder_inputs, decoder_inputs, target_weights,
+                       bucket_id, False)
+
+
 if __name__ == "__main__":
     print(FLAGS.train_dir)
-    train()
+    # train()
+    self_test()
