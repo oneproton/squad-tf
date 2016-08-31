@@ -25,7 +25,7 @@ tf.app.flags.DEFINE_integer("batch_size", 32,
 tf.app.flags.DEFINE_integer("size", 1024, "Size of each model layer.")
 tf.app.flags.DEFINE_integer("num_layers", 2, "Number of layers in the model.")
 tf.app.flags.DEFINE_integer("en_vocab_size", 50000, "English vocabulary size.")
-tf.app.flags.DEFINE_integer("fr_vocab_size", 3, "French vocabulary size.")
+tf.app.flags.DEFINE_integer("de_vocab_size", 4, "French vocabulary size.")
 tf.app.flags.DEFINE_string("data_dir", "./data", "Data directory")
 tf.app.flags.DEFINE_string("train_dir", "./ckpt", "Training directory.")
 tf.app.flags.DEFINE_integer("max_train_data_size", 0,
@@ -83,7 +83,7 @@ def read_data(source_path, target_path, max_size=None):
 def create_model(session, forward_only):
     """Create translation model and initialize or load parameters in session."""
     model = seq2seq_model.Seq2SeqModel(
-        FLAGS.en_vocab_size, FLAGS.fr_vocab_size, _buckets,
+        FLAGS.en_vocab_size, FLAGS.de_vocab_size, _buckets,
         FLAGS.size, FLAGS.num_layers, FLAGS.max_gradient_norm, FLAGS.batch_size,
         FLAGS.learning_rate, FLAGS.learning_rate_decay_factor,
         forward_only=forward_only)
