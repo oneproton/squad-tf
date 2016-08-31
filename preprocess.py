@@ -204,8 +204,8 @@ def main():
 
     with io.open("./data/vocab%d.en" % VOCAB_SIZE, "w", encoding="utf-8") as f_vocab:
         vocab_list = sorted(vocab, key=vocab.get)
-        for word, index in vocab.items():
-            f_vocab.write(word + "\n")
+        for word in vocab_list:
+            f_vocab.write(word + unicode("\n"))
 
     train_enc_inputs, train_dec_inputs = build_qa_pairs(train_set, vocab)
     dev_enc_inputs , dev_dec_inputs = build_qa_pairs(dev_set, vocab)
