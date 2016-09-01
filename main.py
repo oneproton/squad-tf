@@ -39,7 +39,7 @@ tf.app.flags.DEFINE_boolean("self_test", False,
 
 FLAGS = tf.app.flags.FLAGS
 
-_buckets = [(100, 200), (200, 300), (300, 400), (400, 500), (500, 600), (600, 700), (700, 800)]
+_buckets = [(100, 250), (250, 600)]
 
 
 def read_data(source_path, target_path, max_size=None):
@@ -77,6 +77,8 @@ def read_data(source_path, target_path, max_size=None):
                         data_set[bucket_id].append([source_ids, target_ids])
                         break
                 source, target = source_file.readline(), target_file.readline()
+    data_set_size = sum([len(bucket_list) for bucket_list in data_set])
+    print(data_set_size)
     return data_set
 
 
@@ -169,10 +171,10 @@ def train():
                % FLAGS.max_train_data_size)
         train_set = read_data(source_path="./data/train.source",
                               target_path="./data/train.target",
-                              max_size=64)
+                              max_size=None)
         dev_set = read_data(source_path="./data/dev.source",
                             target_path="./data/dev.target",
-                            max_size=FLAGS.max_train_data_size)
+                            max_size=None)
         train_bucket_sizes = [len(train_set[b]) for b in xrange(len(_buckets))]
         train_total_size = float(sum(train_bucket_sizes))
 
