@@ -23,7 +23,7 @@ tf.app.flags.DEFINE_float("max_gradient_norm", 5.0,
 tf.app.flags.DEFINE_integer("batch_size", 32,
                             "Batch size to use during training.")
 tf.app.flags.DEFINE_integer("size", 512, "Size of each model layer.")
-tf.app.flags.DEFINE_integer("num_layers", 1, "Number of layers in the model.")
+tf.app.flags.DEFINE_integer("num_layers", 2, "Number of layers in the model.")
 tf.app.flags.DEFINE_integer("en_vocab_size", 50000, "English vocabulary size.")
 tf.app.flags.DEFINE_integer("de_vocab_size", 4, "French vocabulary size.")
 tf.app.flags.DEFINE_string("data_dir", "./data", "Data directory")
@@ -32,7 +32,7 @@ tf.app.flags.DEFINE_integer("max_train_data_size", 0,
                             "Limit on the siz   e of training data (0: no limit).")
 tf.app.flags.DEFINE_integer("steps_per_checkpoint", 200,
                             "How many training steps to do per checkpoint.")
-tf.app.flags.DEFINE_boolean("decode", False,
+tf.app.flags.DEFINE_boolean("decode", True,
                             "Set to True for interactive decoding.")
 tf.app.flags.DEFINE_boolean("self_test", False,
                             "Run a self-test if this is set to True.")
@@ -233,7 +233,8 @@ def decode():
     with tf.Session() as sess:
         # Create model and load parameters.
         model = create_model(sess, True)
-        FLAGS.batch_size = 1
+        model.batch_size = 1
+        print(model.batch_size)
 
         # Load vocabularies.
         en_vocab_path = os.path.join(FLAGS.data_dir,
@@ -262,6 +263,7 @@ def decode():
             # This is a greedy decoder - outputs are just argmaxes of output_logits.
             outputs = [int(np.argmax(logit, axis=1)) for logit in output_logits]
             # If there is an EOS symbol in outputs, cut them at that point.
+            print(" ".join([tf.compat.as_str(rev_fr_vocab[output]) for output in outputs]))
             if data_utils.EOS_ID in outputs:
                 outputs = outputs[:outputs.index(data_utils.EOS_ID)]
             # Print out French sentence corresponding to outputs.
@@ -295,6 +297,7 @@ if __name__ == "__main__":
     if FLAGS.self_test:
         self_test()
     elif FLAGS.decode:
+        FLAGS.batch_size = 1
         decode()
     else:
         train()
