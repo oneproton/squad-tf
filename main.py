@@ -233,7 +233,7 @@ def decode():
     with tf.Session() as sess:
         # Create model and load parameters.
         model = create_model(sess, True)
-        model.batch_size = 1  # We decode one sentence at a time.
+        FLAGS.batch_size = 1
 
         # Load vocabularies.
         en_vocab_path = os.path.join(FLAGS.data_dir,
