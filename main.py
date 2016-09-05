@@ -39,8 +39,7 @@ tf.app.flags.DEFINE_boolean("self_test", False,
 
 FLAGS = tf.app.flags.FLAGS
 
-_buckets = [(100, 250), (250, 600)]
-
+_buckets = [(100, 250), (250, 400)]
 
 def read_data(source_path, target_path, max_size=None):
     """Read data from source and target files and put into buckets.
