@@ -263,7 +263,6 @@ def decode():
             # This is a greedy decoder - outputs are just argmaxes of output_logits.
             outputs = [int(np.argmax(logit, axis=1)) for logit in output_logits]
             # If there is an EOS symbol in outputs, cut them at that point.
-            print(" ".join([tf.compat.as_str(rev_fr_vocab[output]) for output in outputs]))
             if data_utils.EOS_ID in outputs:
                 outputs = outputs[:outputs.index(data_utils.EOS_ID)]
             # Print out French sentence corresponding to outputs.
