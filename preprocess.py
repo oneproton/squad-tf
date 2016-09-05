@@ -30,21 +30,26 @@ ENCODER_INPUT_LEN = 440
 DECODER_INPUT_LEN = 413
 
 _PAD = "_PAD"
-_GO = "_GO"
 _UNK = "_UNK"
-_EOS = "_EOS"
 _SPL = "_SPL"
-_START_VOCAB = [_PAD, _GO, _UNK, _EOS, _SPL]
+_START_VOCAB = [_PAD, _UNK, _SPL]
 
 PAD_ID = 0
-GO_ID = 1
-UNK_ID = 2
-EOS_ID = 3
-SPL_ID = 4
+UNK_ID = 1
+SPL_ID = 2
 
-B_ID = 0
-I_ID = 1
-O_ID = 2
+_B = "_B"
+_I = "_I"
+_O = "_O"
+_GO = "_GO"
+_EOS = "_EOS"
+_DECODE_VOCAB = [_PAD, _B, _I, _O, _GO, _EOS]
+
+B_ID = 1
+I_ID = 2
+O_ID = 3
+GO_ID = 4
+EOS_ID = 5
 
 
 def load_bin_vec(fname):

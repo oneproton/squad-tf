@@ -15,6 +15,28 @@ import tensorflow as tf
 from tensorflow.models.rnn.translate import data_utils
 from tensorflow.models.rnn.translate import seq2seq_model
 
+_PAD = "_PAD"
+_UNK = "_UNK"
+_SPL = "_SPL"
+_START_VOCAB = [_PAD, _UNK, _SPL]
+
+PAD_ID = 0
+UNK_ID = 1
+SPL_ID = 2
+
+_B = "_B"
+_I = "_I"
+_O = "_O"
+_GO = "_GO"
+_EOS = "_EOS"
+_DECODE_VOCAB = [_PAD, _B, _I, _O, _GO, _EOS]
+
+B_ID = 1
+I_ID = 2
+O_ID = 3
+GO_ID = 4
+EOS_ID = 5
+
 tf.app.flags.DEFINE_float("learning_rate", 0.5, "Learning rate.")
 tf.app.flags.DEFINE_float("learning_rate_decay_factor", 0.9,
                           "Learning rate decays by this much.")
@@ -70,7 +92,7 @@ def read_data(source_path, target_path, max_size=None):
                     sys.stdout.flush()
                 source_ids = [int(x) for x in source.split()]
                 target_ids = [int(x) for x in target.split()]
-                target_ids.append(data_utils.EOS_ID)
+                target_ids.append(EOS_ID)
                 for bucket_id, (source_size, target_size) in enumerate(_buckets):
                     if len(source_ids) < source_size and len(target_ids) < target_size:
                         data_set[bucket_id].append([source_ids, target_ids])
@@ -123,13 +145,13 @@ def get_batch(data, bucket_id):
         encoder_input, decoder_input = random.choice(data[bucket_id])
 
         # Encoder inputs are padded and then reversed.
-        encoder_pad = [data_utils.PAD_ID] * (encoder_size - len(encoder_input))
+        encoder_pad = [PAD_ID] * (encoder_size - len(encoder_input))
         encoder_inputs.append(list(encoder_input + encoder_pad))
 
         # Decoder inputs get an extra "GO" symbol, and are padded then.
         decoder_pad_size = decoder_size - len(decoder_input) - 1
-        decoder_inputs.append([data_utils.GO_ID] + decoder_input +
-                              [data_utils.PAD_ID] * decoder_pad_size)
+        decoder_inputs.append([GO_ID] + decoder_input +
+                              [PAD_ID] * decoder_pad_size)
 
     # Now we create batch-major vectors from the data selected above.
     batch_encoder_inputs, batch_decoder_inputs, batch_weights = [], [], []
@@ -153,7 +175,7 @@ def get_batch(data, bucket_id):
             # The corresponding target is decoder_input shifted by 1 forward.
             if length_idx < decoder_size - 1:
                 target = decoder_inputs[batch_idx][length_idx + 1]
-            if length_idx == decoder_size - 1 or target == data_utils.PAD_ID:
+            if length_idx == decoder_size - 1 or target == PAD_ID:
                 batch_weight[batch_idx] = 0.0
         batch_weights.append(batch_weight)
     return batch_encoder_inputs, batch_decoder_inputs, batch_weights
@@ -263,8 +285,8 @@ def decode():
             # This is a greedy decoder - outputs are just argmaxes of output_logits.
             outputs = [int(np.argmax(logit, axis=1)) for logit in output_logits]
             # If there is an EOS symbol in outputs, cut them at that point.
-            if data_utils.EOS_ID in outputs:
-                outputs = outputs[:outputs.index(data_utils.EOS_ID)]
+            if EOS_ID in outputs:
+                outputs = outputs[:outputs.index(EOS_ID)]
             # Print out French sentence corresponding to outputs.
             print(" ".join([tf.compat.as_str(rev_fr_vocab[output]) for output in outputs]))
             print("> ", end="")
